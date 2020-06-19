@@ -217,6 +217,9 @@ func main() {
 	if !manager.Stop(inputs, shutdownTimeout) {
 		os.Exit(1)
 	}
+	if *cpuprofile != "" {
+		pprof.StopCPUProfile()
+	}
 	os.Exit(0)
 }
 
