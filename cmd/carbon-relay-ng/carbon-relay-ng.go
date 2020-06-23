@@ -85,7 +85,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("failed to open log file %q: %s", config.Log_file, err.Error())
 		} else {
-			log.SetLevel(logFile)
+
+			log.SetOutput(logFile)
 		}
 	}
 
