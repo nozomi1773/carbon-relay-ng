@@ -161,7 +161,7 @@ func (a *Aggregator) setKey() string {
 	return a.Key
 }
 
-func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value float64) {
+func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value float64) bool {
 	rangeTracker.Sample(ts)
 	aggByKey, ok := a.aggregations[quantized]
 	var proc Processor
@@ -190,11 +190,12 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 		if quantized > uint(a.now().Unix())-a.Wait {
 			proc = a.procConstr(value, ts)
 			a.aggregations[quantized][key] = proc
-			return
+			return true
 		}
 		numTooOld.Inc(1)
-		log.Warnf("Aggregator is receiving too old. key is %v, ts is %v, quantized is %v, value is %v.", key, ts, quantized, value)
+		return false
 	}
+	return true
 }
 
 // Flush finalizes and removes aggregations that are due
@@ -342,7 +343,10 @@ func (a *Aggregator) run() {
 			a.numIn.Inc(1)
 			ts := uint(msg.ts)
 			quantized := ts - (ts % a.Interval)
-			a.AddOrCreate(outKey, msg.ts, quantized, msg.val)
+			hasTooOld := !a.AddOrCreate(outKey, msg.ts, quantized, msg.val)
+			if hasTooOld {
+				log.Warnf("Aggregator is receiving too old. key is %v, ts is %v, quantized is %v, value is %v.", string(msg.buf[0]), msg.ts, quantized, msg.val)
+			}
 		case now := <-a.tick:
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))
