@@ -1,10 +1,12 @@
 VERSION=$(shell git describe --tags --always | sed 's/^v//')
 
+GO="/usr/local/go/bin/go"
 
 build:
 	cd ui/web && go-bindata -pkg web admin_http_assets/...
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
-	CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
+	#CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
+	CGO_ENABLED=0 ${GO} build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
 
 build-win: carbon-relay-ng.exe
 
