@@ -80,6 +80,15 @@ func main() {
 	}
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
 
+	if config.Log_file != "" {
+		logFile, err := os.OpenFile(config.Log_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("failed to open log file %q: %s", config.Log_file, err.Error())
+		} else {
+			log.SetLevel(logFile)
+		}
+	}
+
 	formatter := &logger.TextFormatter{}
 	formatter.TimestampFormat = "2006-01-02 15:04:05.000"
 	log.SetFormatter(formatter)
