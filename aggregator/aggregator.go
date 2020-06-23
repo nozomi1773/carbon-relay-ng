@@ -12,6 +12,7 @@ import (
 	metrics "github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/clock"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
+	log "github.com/sirupsen/logrus"
 )
 
 type Aggregator struct {
@@ -192,6 +193,7 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 			return
 		}
 		numTooOld.Inc(1)
+		log.Warnf("Aggregator is receiving too old. key is %v, ts is %v, quantized is %v, value is %v.", key, ts, quantized, value)
 	}
 }
 
