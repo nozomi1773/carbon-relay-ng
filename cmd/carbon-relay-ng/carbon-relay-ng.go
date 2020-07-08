@@ -16,6 +16,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
+	"github.com/Songmu/replaceablewriter"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -80,12 +81,13 @@ func main() {
 	}
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
 
+	var w *replaceablewriter.Writer
 	if config.Log_file != "" {
 		logFile, err := os.OpenFile(config.Log_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Fatalf("failed to open log file %q: %s", config.Log_file, err.Error())
 		} else {
-
+			w = replaceablewriter.New(logFile)
 			log.SetOutput(logFile)
 		}
 	}
@@ -218,12 +220,34 @@ func main() {
 	}
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	select {
-	case sig := <-sigChan:
-		log.Infof("Received signal %q. Shutting down", sig)
+L:
+	for {
+		sig := <-sigChan
+		switch sig {
+		case syscall.SIGINT:
+			log.Infof("Received signal %q. Shutting down", sig)
+			break L
+		case syscall.SIGTERM:
+			log.Infof("Received signal %q. Shutting down", sig)
+			break L
+		case syscall.SIGHUP:
+			if config.Log_file != "" {
+				newLogFile, err := os.OpenFile(config.Log_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+				if err != nil {
+					log.Fatalf("failed to Open log file %q: %s", config.Log_file, err.Error())
+				}
+				w.Replace(newLogFile)
+				log.SetOutput(newLogFile)
+				log.Infof("Received signal %q. Reopening log file.", sig)
+			} else {
+				log.Infof("Received signal %q. But not doing anything.", sig)
+			}
+			continue
+		}
 	}
+
 	if !manager.Stop(inputs, shutdownTimeout) {
 		os.Exit(1)
 	}
