@@ -86,10 +86,9 @@ func main() {
 		logFile, err := os.OpenFile(config.Log_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Fatalf("failed to open log file %q: %s", config.Log_file, err.Error())
-		} else {
-			w = replaceablewriter.New(logFile)
-			log.SetOutput(w)
 		}
+		w = replaceablewriter.New(logFile)
+		log.SetOutput(w)
 	}
 
 	formatter := &logger.TextFormatter{}
