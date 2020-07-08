@@ -1,5 +1,6 @@
 VERSION=$(shell git describe --tags --always | sed 's/^v//')
 
+
 build:
 	cd ui/web && go-bindata -pkg web admin_http_assets/...
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s

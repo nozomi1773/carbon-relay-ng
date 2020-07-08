@@ -232,17 +232,17 @@ L:
 			log.Infof("Received signal %q. Shutting down", sig)
 			break L
 		case syscall.SIGHUP:
-			if config.Log_file != "" {
-				newLogFile, err := os.OpenFile(config.Log_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-				if err != nil {
-					log.Fatalf("failed to Open log file %q: %s", config.Log_file, err.Error())
-				}
-				w.Replace(newLogFile)
-				log.Infof("Received signal %q. Reopening log file.", sig)
-			} else {
+			if config.Log_file == "" {
 				log.Infof("Received signal %q. But not doing anything.", sig)
+				continue
 			}
-			continue
+			log.Infof("Received signal %q. Reopening log file.", sig)
+			newLogFile, err := os.OpenFile(config.Log_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+			if err != nil {
+				log.Fatalf("Failed to open log file %q: %s", config.Log_file, err.Error())
+			}
+			log.Infof("Received signal %q. Reopened log file.", sig)
+			w.Replace(newLogFile)
 		}
 	}
 
