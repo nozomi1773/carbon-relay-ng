@@ -88,7 +88,7 @@ func main() {
 			log.Fatalf("failed to open log file %q: %s", config.Log_file, err.Error())
 		} else {
 			w = replaceablewriter.New(logFile)
-			log.SetOutput(logFile)
+			log.SetOutput(w)
 		}
 	}
 
@@ -239,7 +239,6 @@ L:
 					log.Fatalf("failed to Open log file %q: %s", config.Log_file, err.Error())
 				}
 				w.Replace(newLogFile)
-				log.SetOutput(newLogFile)
 				log.Infof("Received signal %q. Reopening log file.", sig)
 			} else {
 				log.Infof("Received signal %q. But not doing anything.", sig)
