@@ -17,6 +17,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
+	"github.com/Songmu/replaceablewriter"
 	"github.com/grafana/carbon-relay-ng/aggregator"
 	"github.com/grafana/carbon-relay-ng/badmetrics"
 	"github.com/grafana/carbon-relay-ng/cfg"
@@ -110,6 +111,16 @@ func main() {
 		log.Fatalf("Invalid config file %q: %s", config_file, err.Error())
 	}
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
+
+	var w *replaceablewriter.Writer
+	if config.Log_file != "" {
+		logFile, err := os.OpenFile(config.Log_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("failed to open log file %q: %s", config.Log_file, err.Error())
+		}
+		w = replaceablewriter.New(logFile)
+		log.SetOutput(w)
+	}
 
 	formatter := &logger.TextFormatter{}
 	formatter.TimestampFormat = "2006-01-02 15:04:05.000"
@@ -244,13 +255,37 @@ func main() {
 	}
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	select {
-	case sig := <-sigChan:
-		log.Infof("Received signal %q. Shutting down", sig)
+L:
+	for {
+		sig := <-sigChan
+		switch sig {
+		case syscall.SIGINT:
+			log.Infof("Received signal %q. Shutting down", sig)
+			break L
+		case syscall.SIGTERM:
+			log.Infof("Received signal %q. Shutting down", sig)
+			break L
+		case syscall.SIGHUP:
+			if config.Log_file == "" {
+				log.Infof("Received signal %q. But not doing anything.", sig)
+				continue
+			}
+			log.Infof("Received signal %q. Reopening log file.", sig)
+			newLogFile, err := os.OpenFile(config.Log_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+			if err != nil {
+				log.Fatalf("Failed to open log file %q: %s", config.Log_file, err.Error())
+			}
+			log.Infof("Received signal %q. Reopened log file.", sig)
+			w.Replace(newLogFile)
+		}
 	}
+
 	if !manager.Stop(inputs, shutdownTimeout) {
 		os.Exit(1)
+	}
+	if *cpuprofile != "" {
+		pprof.StopCPUProfile()
 	}
 }

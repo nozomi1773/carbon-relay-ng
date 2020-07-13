@@ -20,6 +20,7 @@ type Config struct {
 	First_only              bool
 	Init                    Init
 	Instance                string
+	Log_file                string
 	Log_level               string
 	Instrumentation         instrumentation
 	Bad_metrics_max_age     string
